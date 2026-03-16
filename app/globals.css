@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* @custom-variant dark (&:is(.dark *)); */
 
 @theme inline {
   --color-background: var(--background);
@@ -47,6 +47,7 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 0.625rem;
   --background: oklch(0.99 0.002 250);
   --foreground: oklch(0.13 0.02 250);
@@ -81,7 +82,7 @@
   --sidebar-ring: oklch(0.55 0.22 250);
 }
 
-.dark {
+/* .dark {
   --background: oklch(0.12 0.02 250);
   --foreground: oklch(0.98 0.005 250);
   --card: oklch(0.17 0.025 250);
@@ -113,13 +114,28 @@
   --sidebar-accent-foreground: oklch(0.98 0.005 250);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.65 0.2 250);
-}
+} */
 
 @layer base {
+  html {
+    color-scheme: light;
+    forced-color-adjust: none;
+    background: white;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+    color-scheme: light;
+    background: white;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    color-scheme: light;
   }
 }

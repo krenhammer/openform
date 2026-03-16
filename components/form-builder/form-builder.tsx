@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Form, QuestionConfig, ThemePreset, FormStatus } from '@/lib/database.types'
@@ -123,13 +123,30 @@ export function FormBuilder({ form: initialForm }: FormBuilderProps) {
     setIsSaving(false)
   }
 
-  const addQuestion = (type: QuestionConfig['type']) => {
+  const addQuestion = useCallback((type: QuestionConfig['type']) => {
     const newQuestion = createDefaultQuestion(type)
-    setQuestions([...questions, newQuestion])
+    setQuestions((prev) => [...prev, newQuestion])
     setSelectedQuestionId(newQuestion.id)
     setShowAddQuestion(false)
     setHasUnsavedChanges(true)
-  }
+  }, [])
+
+  /** Listen for Vowel voice commands: "add a question" opens dialog, "add [type]" adds and closes. */
+  useEffect(() => {
+    const onOpenDialog = () => setShowAddQuestion(true)
+    const onAddByType = (e: Event) => {
+      const { type } = (e as CustomEvent<{ type: string | null }>).detail
+      if (type) {
+        addQuestion(type as QuestionConfig['type'])
+      }
+    }
+    window.addEventListener('openform:openAddQuestionDialog', onOpenDialog)
+    window.addEventListener('openform:addQuestionByType', onAddByType as EventListener)
+    return () => {
+      window.removeEventListener('openform:openAddQuestionDialog', onOpenDialog)
+      window.removeEventListener('openform:addQuestionByType', onAddByType as EventListener)
+    }
+  }, [addQuestion])
 
   const updateQuestion = (id: string, updates: Partial<QuestionConfig>) => {
     setQuestions(questions.map(q => 

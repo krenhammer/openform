@@ -85,10 +85,15 @@ The current route and state is automatically provided in the <context> section.
 - navigateToFormEditor: Navigate to edit a specific form (requires formId)
 - navigateToFormResponses: Navigate to view responses for a specific form (requires formId)
 
+### Form Editor (when on /forms/[id]/edit):
+- openAddQuestionDialog: Opens the "Add Question" type picker dialog. Use when user says "add a question", "add a new question", "I want to add a question", etc.
+- addQuestionByType: Adds a question of the specified type and closes the dialog. Use when user specifies a type after the dialog is open, e.g. "short text", "dropdown", "email", "rating", "yes no", "file upload", "website url", etc. Valid types: short_text, long_text, dropdown, checkboxes, email, phone, number, date, rating, opinion_scale, yes_no, file_upload, url.
+
 ## How to Use:
 - To navigate: Say "go to dashboard", "create a form", "open settings", etc.
 - The navigation adapter handles all routing automatically
 - **DO NOT use DOM manipulation** - always prefer state management
+- **Add question flow**: When user says "add a question", call openAddQuestionDialog first. Then when they say which type (e.g. "short text", "dropdown"), call addQuestionByType with that type - this adds the question and closes the dialog.
 
 Help users navigate and manage their forms using voice commands.`,
 
@@ -239,6 +244,79 @@ function registerCustomActions(vowel: Vowel) {
         routerInstance.push(`/forms/${formId}/responses`)
       }
       return { success: true, message: `Navigating to responses for ${formId}` }
+    }
+  )
+
+  /** Opens the Add Question type picker dialog. Use when user says "add a question". */
+  vowel.registerAction(
+    'openAddQuestionDialog',
+    {
+      description: 'Opens the Add Question type picker dialog. Call when user says "add a question", "add a new question", etc. Only relevant when on the form editor page.',
+      parameters: {},
+    },
+    async () => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('openform:openAddQuestionDialog'))
+      }
+      return { success: true, message: 'Opened add question dialog' }
+    }
+  )
+
+  /** Maps user-friendly type names to QuestionType. */
+  const typeAliases: Record<string, string> = {
+    'short text': 'short_text',
+    'long text': 'long_text',
+    'short_text': 'short_text',
+    'long_text': 'long_text',
+    dropdown: 'dropdown',
+    checkboxes: 'checkboxes',
+    'multiple choice': 'checkboxes',
+    email: 'email',
+    phone: 'phone',
+    number: 'number',
+    date: 'date',
+    rating: 'rating',
+    'opinion scale': 'opinion_scale',
+    'opinion_scale': 'opinion_scale',
+    'yes no': 'yes_no',
+    'yes_no': 'yes_no',
+    'file upload': 'file_upload',
+    'file_upload': 'file_upload',
+    url: 'url',
+    'website url': 'url',
+    'website': 'url',
+  }
+
+  /** Adds a question of the specified type and closes the dialog. */
+  vowel.registerAction(
+    'addQuestionByType',
+    {
+      description:
+        'Adds a question of the specified type to the form and closes the add-question dialog. Call when user specifies a type (e.g. "short text", "dropdown", "email"). Valid types: short_text, long_text, dropdown, checkboxes, email, phone, number, date, rating, opinion_scale, yes_no, file_upload, url.',
+      parameters: {
+        type: {
+          type: 'string',
+          description:
+            'Question type: short_text, long_text, dropdown, checkboxes, email, phone, number, date, rating, opinion_scale, yes_no, file_upload, or url. User may say "short text" (→ short_text), "yes no" (→ yes_no), etc.',
+        },
+      },
+    },
+    async ({ type: typeParam }) => {
+      const normalized = typeParam?.toLowerCase().trim()
+      const questionType = normalized ? typeAliases[normalized] ?? normalized.replace(/\s+/g, '_') : null
+      const validTypes = [
+        'short_text', 'long_text', 'dropdown', 'checkboxes', 'email', 'phone',
+        'number', 'date', 'rating', 'opinion_scale', 'yes_no', 'file_upload', 'url',
+      ]
+      const resolvedType = questionType && validTypes.includes(questionType) ? questionType : null
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('openform:addQuestionByType', { detail: { type: resolvedType } })
+        )
+      }
+      return resolvedType
+        ? { success: true, message: `Added ${resolvedType} question` }
+        : { success: false, message: `Unknown question type: ${typeParam}` }
     }
   )
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter as useNextRouter } from 'next/navigation'
 import { VowelProvider, VowelAgent } from '@vowel.to/client/react'
 import {
@@ -17,6 +17,7 @@ const appId = process.env.NEXT_PUBLIC_VOWEL_APP_ID
 function VowelInit({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useNextRouter()
+  const initialPathnameRef = useRef(pathname)
 
   useEffect(() => {
     setRouter(router)
@@ -28,11 +29,11 @@ function VowelInit({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      initializeVowel(appId, pathname)
+      initializeVowel(appId, initialPathnameRef.current)
     } catch (error) {
       console.error('❌ Failed to initialize Vowel:', error)
     }
-  }, [pathname])
+  }, [])
 
   useEffect(() => {
     updateVowelContext(pathname)
@@ -50,24 +51,30 @@ function VowelLoading() {
 }
 
 export function VowelWrapper({ children }: { children: React.ReactNode }) {
+  const shouldEnableVowel = Boolean(appId)
   const [vowel, setVowel] = useState<VowelClientType>(getVowel())
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(shouldEnableVowel && getVowel() === null)
   const [initError, setInitError] = useState<string | null>(null)
+  const hasClientRef = useRef(vowel !== null)
+
+  useEffect(() => {
+    hasClientRef.current = vowel !== null
+  }, [vowel])
 
   useEffect(() => {
     if (!appId) {
-      setIsLoading(false)
       return
     }
 
     const unsubscribe = subscribeToVowelChanges((client) => {
       setVowel(client)
       setIsLoading(false)
+      setInitError(null)
     })
 
     const timeout = setTimeout(() => {
-      setIsLoading(false)
-      if (!vowel) {
+      if (!hasClientRef.current) {
+        setIsLoading(false)
         setInitError('Vowel initialization timed out')
       }
     }, 3000)
@@ -78,7 +85,7 @@ export function VowelWrapper({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  if (!appId) {
+  if (!shouldEnableVowel) {
     return <>{children}</>
   }
 
@@ -96,6 +103,7 @@ export function VowelWrapper({ children }: { children: React.ReactNode }) {
       {vowelReady && (
         <VowelAgent
           position="bottom-right"
+          buttonColor="#2563eb"
           enableFloatingCursor={false}
         />
       )}
