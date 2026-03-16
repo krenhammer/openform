@@ -499,7 +499,51 @@ export function FormBuilder({ form: initialForm }: FormBuilderProps) {
             <TabsContent value="settings" className="flex-1 mt-0 overflow-auto data-[state=inactive]:hidden">
               <div className="p-4 space-y-6">
                 <div>
-                  <Label htmlFor="slug" className="text-sm font-medium">Form URL</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="slug" className="text-sm font-medium">Form URL</Label>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        disabled={form.status !== 'published'}
+                        onClick={() => {
+                          const url = `${window.location.origin}/f/${form.slug}`
+                          navigator.clipboard.writeText(url)
+                          toast.success('Form URL copied to clipboard')
+                        }}
+                        title={form.status === 'published' ? 'Copy form URL' : 'Publish form to copy URL'}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      {form.status === 'published' ? (
+                        <Link
+                          href={`/f/${form.slug}`}
+                          target="_blank"
+                          passHref
+                        >
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Open form in new tab"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled
+                          title="Publish form to open in new tab"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="text-sm text-slate-500">/f/</span>
                     <Input

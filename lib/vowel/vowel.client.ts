@@ -248,23 +248,23 @@ Help users navigate and manage their forms using these voice commands.`,
     },
 
     voiceConfig: {
-      provider: 'vowel-prime',
+      provider: 'grok',
       vowelPrimeConfig: { environment: 'staging' },
-      llmProvider: 'groq',
-      model: 'openai/gpt-oss-120b',
-      voice: 'Timothy',
+      // llmProvider: 'groq',
+      // model: 'openai/gpt-oss-120b',
+      voice: 'Leo',
       language: 'en-US',
       initialGreetingPrompt: `Welcome to OpenForm! You're on the dashboard where you can view and manage your forms. You can say "create a new form" to start building beautiful TypeForm-style forms, "go to settings" to adjust your preferences, or ask me to help you navigate anywhere. What would you like to do?`,
-      turnDetection: {
-        mode: 'server_vad',
-        serverVAD: {
-          threshold: 0.5,
-          silenceDurationMs: 550,
-          prefixPaddingMs: 0,
-          interruptResponse: true,
-        },
-      },
-      useServerVad: true,
+      // turnDetection: {
+      //   mode: 'server_vad',
+      //   // serverVAD: {
+      //   //   threshold: 0.5,
+      //   //   silenceDurationMs: 550,
+      //   //   prefixPaddingMs: 0,
+      //   //   interruptResponse: true,
+      //   // },
+      // },
+      // useServerVad: true,
     },
 
     onUserSpeakingChange: (isSpeaking) => {
