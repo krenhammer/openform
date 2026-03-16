@@ -43,6 +43,7 @@ import {
 import Link from 'next/link'
 import { QuestionEditor } from './question-editor'
 import { FormPreview } from './form-preview'
+import { updateVowelContext } from '@/lib/vowel/vowel.client'
 
 interface FormBuilderProps {
   form: Form
@@ -60,6 +61,9 @@ export function FormBuilder({ form: initialForm }: FormBuilderProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [showPublishDialog, setShowPublishDialog] = useState(false)
   const [showAddQuestion, setShowAddQuestion] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [questionToDelete, setQuestionToDelete] = useState<string | null>(null)
+  const [questionToDeleteTitle, setQuestionToDeleteTitle] = useState('')
   const [activeTab, setActiveTab] = useState('questions')
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
@@ -131,29 +135,130 @@ export function FormBuilder({ form: initialForm }: FormBuilderProps) {
     setHasUnsavedChanges(true)
   }, [])
 
-  /** Listen for Vowel voice commands: "add a question" opens dialog, "add [type]" adds and closes. */
+  const updateQuestion = useCallback((id: string, updates: Partial<QuestionConfig>) => {
+    setQuestions((prev) =>
+      prev.map((q) => (q.id === id ? { ...q, ...updates } : q))
+    )
+    setHasUnsavedChanges(true)
+  }, [])
+
+  /** Expose form builder state for Vowel voice actions (editQuestion). */
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    ;(
+      window as unknown as {
+        __openform?: {
+          selectedQuestionId: string | null
+          selectedQuestionIndex: number | null
+          questions: { id: string; type: string; title: string }[]
+        }
+      }
+    ).__openform = {
+      selectedQuestionId,
+      selectedQuestionIndex: selectedQuestionId
+        ? questions.findIndex((q) => q.id === selectedQuestionId) + 1 || null
+        : null,
+      questions: questions.map((q) => ({
+        id: q.id,
+        type: q.type,
+        title: q.title || '',
+      })),
+    }
+    updateVowelContext(window.location.pathname)
+    return () => {
+      delete (window as unknown as { __openform?: unknown }).__openform
+    }
+  }, [selectedQuestionId, questions])
+
+  /** Listen for Vowel voice commands: "add a question" opens dialog, "add [type]" adds and closes, "edit question" updates fields, "delete question" opens confirm dialog. */
   useEffect(() => {
     const onOpenDialog = () => setShowAddQuestion(true)
     const onAddByType = (e: Event) => {
-      const { type } = (e as CustomEvent<{ type: string | null }>).detail
+      const { type, title, description, placeholder, required } = (
+        e as CustomEvent<{
+          type: string | null
+          title?: string
+          description?: string
+          placeholder?: string
+          required?: boolean
+        }>
+      ).detail
       if (type) {
-        addQuestion(type as QuestionConfig['type'])
+        const newQuestion = createDefaultQuestion(type as QuestionConfig['type'])
+        // Apply optional fields if provided
+        if (title !== undefined) newQuestion.title = title
+        if (description !== undefined) newQuestion.description = description
+        if (placeholder !== undefined) newQuestion.placeholder = placeholder
+        if (required !== undefined) newQuestion.required = required
+        setQuestions((prev) => [...prev, newQuestion])
+        setSelectedQuestionId(newQuestion.id)
+        setShowAddQuestion(false)
+        setHasUnsavedChanges(true)
       }
+    }
+    const onEditQuestion = (e: Event) => {
+      const { questionId, title, description, placeholder, required } = (
+        e as CustomEvent<{
+          questionId: string
+          title?: string
+          description?: string
+          placeholder?: string
+          required?: boolean
+        }>
+      ).detail
+      if (!questionId) return
+      const updates: Partial<QuestionConfig> = {}
+      if (title !== undefined) updates.title = title
+      if (description !== undefined) updates.description = description
+      if (placeholder !== undefined) updates.placeholder = placeholder
+      if (required !== undefined) updates.required = required
+      if (Object.keys(updates).length > 0) {
+        updateQuestion(questionId, updates)
+        setSelectedQuestionId(questionId)
+      }
+    }
+    const onRequestDelete = (e: Event) => {
+      const { questionId, questionTitle } = (
+        e as CustomEvent<{
+          questionId: string
+          questionTitle: string
+          questionIndex: number
+        }>
+      ).detail
+      if (questionId) {
+        setQuestionToDelete(questionId)
+        setQuestionToDeleteTitle(questionTitle || 'Untitled question')
+        setShowDeleteConfirm(true)
+      }
+    }
+    const onConfirmDelete = () => {
+      if (questionToDelete) {
+        deleteQuestion(questionToDelete)
+        setShowDeleteConfirm(false)
+        setQuestionToDelete(null)
+        toast.success('Question deleted')
+      }
+    }
+    const onCancelDelete = () => {
+      setShowDeleteConfirm(false)
+      setQuestionToDelete(null)
+      toast.info('Delete cancelled')
     }
     window.addEventListener('openform:openAddQuestionDialog', onOpenDialog)
     window.addEventListener('openform:addQuestionByType', onAddByType as EventListener)
+    window.addEventListener('openform:editQuestion', onEditQuestion as EventListener)
+    window.addEventListener('openform:requestDeleteQuestion', onRequestDelete as EventListener)
+    window.addEventListener('openform:confirmDeleteQuestion', onConfirmDelete)
+    window.addEventListener('openform:cancelDeleteQuestion', onCancelDelete)
     return () => {
       window.removeEventListener('openform:openAddQuestionDialog', onOpenDialog)
       window.removeEventListener('openform:addQuestionByType', onAddByType as EventListener)
+      window.removeEventListener('openform:editQuestion', onEditQuestion as EventListener)
+      window.removeEventListener('openform:requestDeleteQuestion', onRequestDelete as EventListener)
+      window.removeEventListener('openform:confirmDeleteQuestion', onConfirmDelete)
+      window.removeEventListener('openform:cancelDeleteQuestion', onCancelDelete)
     }
-  }, [addQuestion])
-
-  const updateQuestion = (id: string, updates: Partial<QuestionConfig>) => {
-    setQuestions(questions.map(q => 
-      q.id === id ? { ...q, ...updates } : q
-    ))
-    setHasUnsavedChanges(true)
-  }
+  }, [addQuestion, updateQuestion, questionToDelete])
 
   const deleteQuestion = (id: string) => {
     setQuestions(questions.filter(q => q.id !== id))
@@ -529,7 +634,7 @@ export function FormBuilder({ form: initialForm }: FormBuilderProps) {
               {form.status === 'published' ? 'Unpublish form?' : 'Publish form?'}
             </DialogTitle>
             <DialogDescription>
-              {form.status === 'published' 
+              {form.status === 'published'
                 ? 'This will make your form inaccessible to respondents. Existing responses will be kept.'
                 : 'Your form will be accessible at:'
               }
@@ -546,17 +651,67 @@ export function FormBuilder({ form: initialForm }: FormBuilderProps) {
             <Button variant="outline" onClick={() => setShowPublishDialog(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handlePublish}
               disabled={isSaving}
-              className={form.status === 'published' 
-                ? 'bg-amber-500 hover:bg-amber-600' 
+              className={form.status === 'published'
+                ? 'bg-amber-500 hover:bg-amber-600'
                 : 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20'
               }
             >
               {isSaving ? 'Saving...' : form.status === 'published' ? 'Unpublish' : 'Publish'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Question Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Delete Question?
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Are you sure you want to delete this question?
+              <p className="font-medium text-slate-900 mt-2 bg-slate-50 p-2 rounded">
+                &ldquo;{questionToDeleteTitle}&rdquo;
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteConfirm(false)
+                setQuestionToDelete(null)
+                // Also trigger the cancel event for Vowel
+                window.dispatchEvent(new CustomEvent('openform:cancelDeleteQuestion'))
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (questionToDelete) {
+                  deleteQuestion(questionToDelete)
+                  setShowDeleteConfirm(false)
+                  setQuestionToDelete(null)
+                  toast.success('Question deleted')
+                }
+              }}
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </Button>
+          </DialogFooter>
+          <p className="text-xs text-slate-500 text-center pt-2 border-t">
+            Say &ldquo;yes&rdquo; or &ldquo;confirm&rdquo; to delete, or &ldquo;no&rdquo; / &ldquo;cancel&rdquo; to keep it.
+          </p>
         </DialogContent>
       </Dialog>
     </div>
