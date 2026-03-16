@@ -10,12 +10,13 @@ import { Button } from '@/components/ui/button'
 import { ChevronUp, ChevronDown, Check, ArrowRight } from 'lucide-react'
 import { QuestionRenderer } from './question-renderer'
 import { toast } from 'sonner'
+import { VowelFormPlayerWrapper } from './vowel-form-player-wrapper'
 
 interface FormPlayerProps {
   form: Form
 }
 
-export function FormPlayer({ form }: FormPlayerProps) {
+function FormPlayerContent({ form }: FormPlayerProps) {
   const supabase = createClient()
   const questions = (form.questions as QuestionConfig[]) || []
   const theme = getTheme(form.theme)
@@ -207,78 +208,106 @@ export function FormPlayer({ form }: FormPlayerProps) {
   // Thank you screen
   if (isSubmitted) {
     return (
-      <div 
-        className="min-h-screen flex items-center justify-center p-6"
-        style={{ 
-          ...themeStyles,
-          backgroundColor: theme.backgroundColor,
-          fontFamily: theme.fontFamily,
-        }}
+      <VowelFormPlayerWrapper
+        form={form}
+        currentIndex={currentIndex}
+        totalQuestions={questions.length}
+        currentQuestion={currentQuestion}
+        answers={answers}
+        isSubmitted={isSubmitted}
+        isSubmitting={isSubmitting}
+        onGoToNext={goToNext}
+        onGoToPrevious={goToPrevious}
+        onSubmit={handleSubmit}
+        onUpdateAnswer={updateAnswer}
       >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center max-w-lg"
+        <div
+          className="min-h-screen flex items-center justify-center p-6"
+          style={{
+            ...themeStyles,
+            backgroundColor: theme.backgroundColor,
+            fontFamily: theme.fontFamily,
+          }}
         >
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            className="w-20 h-20 mx-auto mb-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: `${theme.primaryColor}20` }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center max-w-lg"
           >
-            <Check className="w-10 h-10" style={{ color: theme.primaryColor }} />
-          </motion.div>
-          <h1 
-            className="text-3xl md:text-4xl font-bold mb-4"
-            style={{ color: theme.textColor }}
-          >
-            {form.thank_you_message}
-          </h1>
-          <p 
-            className="text-lg opacity-70"
-            style={{ color: theme.textColor }}
-          >
-            Your response has been recorded.
-          </p>
-          
-          {/* OpenForm branding */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="mt-12"
-          >
-            <a 
-              href="/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm opacity-50 hover:opacity-70 transition-opacity"
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+              className="w-20 h-20 mx-auto mb-8 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: `${theme.primaryColor}20` }}
+            >
+              <Check className="w-10 h-10" style={{ color: theme.primaryColor }} />
+            </motion.div>
+            <h1
+              className="text-3xl md:text-4xl font-bold mb-4"
               style={{ color: theme.textColor }}
             >
-              <span>Made with</span>
-              <span className="font-semibold">OpenForm</span>
-            </a>
+              {form.thank_you_message}
+            </h1>
+            <p
+              className="text-lg opacity-70"
+              style={{ color: theme.textColor }}
+            >
+              Your response has been recorded.
+            </p>
+
+            {/* OpenForm branding */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-12"
+            >
+              <a
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm opacity-50 hover:opacity-70 transition-opacity"
+                style={{ color: theme.textColor }}
+              >
+                <span>Made with</span>
+                <span className="font-semibold">OpenForm</span>
+              </a>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      </div>
+        </div>
+      </VowelFormPlayerWrapper>
     )
   }
 
   // Empty form
   if (questions.length === 0) {
     return (
-      <div 
-        className="min-h-screen flex items-center justify-center p-6"
-        style={{ 
-          backgroundColor: theme.backgroundColor,
-          fontFamily: theme.fontFamily,
-        }}
+      <VowelFormPlayerWrapper
+        form={form}
+        currentIndex={currentIndex}
+        totalQuestions={questions.length}
+        currentQuestion={currentQuestion}
+        answers={answers}
+        isSubmitted={isSubmitted}
+        isSubmitting={isSubmitting}
+        onGoToNext={goToNext}
+        onGoToPrevious={goToPrevious}
+        onSubmit={handleSubmit}
+        onUpdateAnswer={updateAnswer}
       >
-        <p style={{ color: theme.textColor }} className="opacity-50">
-          This form has no questions yet.
-        </p>
-      </div>
+        <div
+          className="min-h-screen flex items-center justify-center p-6"
+          style={{
+            backgroundColor: theme.backgroundColor,
+            fontFamily: theme.fontFamily,
+          }}
+        >
+          <p style={{ color: theme.textColor }} className="opacity-50">
+            This form has no questions yet.
+          </p>
+        </div>
+      </VowelFormPlayerWrapper>
     )
   }
 
@@ -298,15 +327,28 @@ export function FormPlayer({ form }: FormPlayerProps) {
   }
 
   return (
-    <div 
-      ref={containerRef}
-      className="min-h-screen flex flex-col"
-      style={{ 
-        ...themeStyles,
-        backgroundColor: theme.backgroundColor,
-        fontFamily: theme.fontFamily,
-      }}
+    <VowelFormPlayerWrapper
+      form={form}
+      currentIndex={currentIndex}
+      totalQuestions={questions.length}
+      currentQuestion={currentQuestion}
+      answers={answers}
+      isSubmitted={isSubmitted}
+      isSubmitting={isSubmitting}
+      onGoToNext={goToNext}
+      onGoToPrevious={goToPrevious}
+      onSubmit={handleSubmit}
+      onUpdateAnswer={updateAnswer}
     >
+      <div
+        ref={containerRef}
+        className="min-h-screen flex flex-col"
+        style={{
+          ...themeStyles,
+          backgroundColor: theme.backgroundColor,
+          fontFamily: theme.fontFamily,
+        }}
+      >
       {/* Progress bar */}
       <div className="fixed top-0 left-0 right-0 z-50">
         <Progress 
@@ -489,7 +531,7 @@ export function FormPlayer({ form }: FormPlayerProps) {
         </div>
 
         {/* OpenForm branding */}
-        <a 
+        <a
           href="/"
           target="_blank"
           rel="noopener noreferrer"
@@ -499,7 +541,12 @@ export function FormPlayer({ form }: FormPlayerProps) {
           Powered by <span className="font-semibold">OpenForm</span>
         </a>
       </footer>
-    </div>
+      </div>
+    </VowelFormPlayerWrapper>
   )
+}
+
+export function FormPlayer({ form }: FormPlayerProps) {
+  return <FormPlayerContent form={form} />
 }
 
